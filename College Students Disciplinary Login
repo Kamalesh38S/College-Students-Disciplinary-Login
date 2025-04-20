@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>College Attendance Disciplinary</title>
+  <style>
+    /* Updated body styling with gradient background animation */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: linear-gradient(135deg, #4CAF50, #FF9800);
+      background-attachment: fixed;
+      background-size: cover;
+      color: #fff;
+      animation: gradientShift 12s ease infinite;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Animation for smooth gradient transition */
+    @keyframes gradientShift {
+      0% {
+        background: linear-gradient(135deg, #4CAF50, #FF9800);
+      }
+      50% {
+        background: linear-gradient(135deg, #2196F3, #E91E63);
+      }
+      100% {
+        background: linear-gradient(135deg, #4CAF50, #FF9800);
+      }
+    }
+
+    /* Semi-transparent header for better readability */
+    header {
+      background-color: rgba(255, 255, 255, 0.85);
+      width: 100%;
+      padding: 1rem;
+      text-align: center;
+      color: #333;
+      margin-bottom: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Enhanced containers with card-like appearance */
+    .upload-section,
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      padding: 1.5rem;
+      margin: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 500px;
+    }
+
+    /* Input fields and buttons */
+    label,
+    input,
+    button {
+      display: block;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    input,
+    button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: none;
+    }
+
+    input {
+      background-color: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+
+    button {
+      background-color: #FF9800;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #E65100;
+      transform: translateY(-2px);
+    }
+
+    /* Message styling for logged details */
+    .message {
+      margin-top: 1rem;
+      font-weight: bold;
+      color: #333;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>College Students Disciplinary Logging</h1>
+  </header>
+  
+  <!-- Section to upload the Excel file containing student data -->
+  <div class="upload-section">
+    <label for="studentExcelFile">
+      Upload Student Data Excel File (with columns: RollNumber & Name):
+    </label>
+    <input type="file" id="studentExcelFile" accept=".xlsx, .xls" />
+  </div>
+
+  <!-- Form container for entering the roll number -->
+  <div class="container">
+    <p>
+      If you are here without proper identification or grooming, please enter your roll number.
+    </p>
+    <form id="attendanceForm">
+      <label for="rollNumber">Enter Roll Number:</label>
+      <input type="text" id="rollNumber" placeholder="e.g., 20XXPECEEXXX" required />
+      <button type="submit">Submit</button>
+    </form>
+    <div class="message" id="result"></div>
+    <button id="downloadLog" style="display:none;">Download Attendance Log</button>
+  </div>
+
+  <!-- SheetJS Library for handling Excel files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    let studentsData = [];
+    let studentLog = [];
+
+    // Utility functions for LocalStorage
+    function saveToLocalStorage(key, data) {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function getFromLocalStorage(key) {
+      const storedData = localStorage.getItem(key);
+      return storedData ? JSON.parse(storedData) : [];
+    }
+
+    // Retrieve saved data when the page loads
+    document.addEventListener("DOMContentLoaded", function () {
+      studentsData = getFromLocalStorage("studentsData");
+      studentLog = getFromLocalStorage("studentLog");
+      console.log("Loaded studentsData from LocalStorage:", studentsData);
+      console.log("Loaded studentLog from LocalStorage:", studentLog);
+
+      // If there is an attendance log already, show the Download button.
+      if (studentLog.length > 0) {
+        document.getElementById("downloadLog").style.display = "block";
+      }
+    });
+
+    // Function to load student data from the uploaded Excel file
+    function loadExcelFile(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert the worksheet to JSON (assumes headers "RollNumber" & "Name" exist)
+        studentsData = XLSX.utils.sheet_to_json(worksheet);
+        console.log("Loaded student data:", studentsData);
+        alert("Student data loaded successfully!");
+
+        // Save the student data to LocalStorage permanently
+        saveToLocalStorage("studentsData", studentsData);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Event listener for file upload
+    document.getElementById("studentExcelFile").addEventListener("change", function (e) {
+      const file = e.target.files[0];
+      if (file) {
+        loadExcelFile(file);
+      }
+    });
+
+    // Handle attendance form submission
+    document.getElementById("attendanceForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const rollNumber = document.getElementById("rollNumber").value.trim();
+      if (!rollNumber) {
+        alert("Please enter a roll number.");
+        return;
+      }
+      
+      // Find the student record by roll number (adjust keys if needed)
+      const student = studentsData.find(
+        s => s.RollNumber === rollNumber || s.rollNo === rollNumber
+      );
+      
+      if (student) {
+        const currentDateTime = new Date().toLocaleString();
+        const logRecord = {
+          RollNumber: student.RollNumber || student.rollNo,
+          Name: student.Name || student.name,
+          LoggedAt: currentDateTime
+        };
+        studentLog.push(logRecord);
+
+        // Save the updated attendance log to LocalStorage
+        saveToLocalStorage("studentLog", studentLog);
+
+        document.getElementById("result").textContent =
+          `Record logged for ${logRecord.Name} at ${currentDateTime}`;
+        document.getElementById("downloadLog").style.display = "block";
+      } else {
+        document.getElementById("result").textContent =
+          `No record found for roll number ${rollNumber}. Please verify your entry and the Excel file data.`;
+      }
+      document.getElementById("rollNumber").value = "";
+    });
+
+    // Download the attendance log as a new Excel file
+    document.getElementById("downloadLog").addEventListener("click", function () {
+      // Retrieve the latest studentLog from LocalStorage
+      studentLog = getFromLocalStorage("studentLog");
+
+      if (studentLog.length === 0) {
+        alert("No logs available to download.");
+        return;
+      }
+      let workbook = XLSX.utils.book_new();
+      let worksheet = XLSX.utils.json_to_sheet(studentLog);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance_Log");
+      XLSX.writeFile(workbook, "Attendance_Log.xlsx");
+    });
+  </script>
+</body>
+</html>
